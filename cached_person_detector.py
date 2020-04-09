@@ -7,6 +7,8 @@ from person_detector import PersonDetector
 
 class CachedPersonDetector(PersonDetector):
 
+    SAVE_PERIOD = 100  # in frames
+
     def __init__(self, video_path, cache_dir='./'):
         super().__init__(video_path)
         if os.path.isdir(cache_dir):
@@ -56,6 +58,8 @@ class CachedPersonDetector(PersonDetector):
                         if self.masks_shapes.size else shape
 
                 self.cache_len += 1
+            if self.video.frame_num > 0 and self.video.frame_num % self.SAVE_PERIOD == 0:
+                self.save_cache()  # periodical save
             return date, frame, detections
         else:  # frame cached, return pre-calculated data
             retval = self.video.get_datetime_frame()
@@ -96,7 +100,7 @@ class CachedPersonDetector(PersonDetector):
             masks=self.masks_cache,
             shapes=self.masks_shapes
         )
-        print(f"Cached saved to {self.cache_file_name}")
+        print(f"Cache saved to {self.cache_file_name}")
 
 
 if __name__ == '__main__':

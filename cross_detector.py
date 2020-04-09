@@ -1,13 +1,15 @@
 import numpy as np
-
+import cv2
+import os
 
 from cached_person_detector import CachedPersonDetector
 
 
 class CrossDetector:
 
-    def __init__(self, video_path, gate_y_coor, gate_width=100):  # 650
-        self.person_detector = CachedPersonDetector(video_path)
+    def __init__(self, video_path, gate_y_coor, gate_width=100):
+        self.person_detector = CachedPersonDetector(video_path)  # 1k frames requires up to 2Gb of storage
+        # self.person_detector = PersonDetector(video_path)  # storage not required
         self.gate_y_coor = gate_y_coor
         self.gate_width = gate_width
         self.track_boxes = []
@@ -73,8 +75,6 @@ class TrackingBox:
             mask_with_padding[cbox[1]:(cbox[1] + mask.shape[0]), cbox[0]:(cbox[0] + mask.shape[1])] = mask
 
             # IoU
-            IoU = (smask_with_padding & mask_with_padding).sum() / (smask_with_padding | mask_with_padding).sum()
-            print(IoU)
             return (smask_with_padding & mask_with_padding).sum() / (smask_with_padding | mask_with_padding).sum()
         else:
             return 0
@@ -98,6 +98,9 @@ class TrackingBox:
 
     def update(self, masks_in_frame, boxes_in_frame, imgs_in_frame, date):
         assert len(masks_in_frame) == len(boxes_in_frame) == len(imgs_in_frame)
+        assert isinstance(masks_in_frame, list) and isinstance(boxes_in_frame, list) \
+            and isinstance(imgs_in_frame, list)
+
         for i in range(len(masks_in_frame)):
             if self.IoU_with_mask(masks_in_frame[i], boxes_in_frame[i]) > self.IOU_THRESH:
                 # Append a new detection to the track
@@ -112,12 +115,22 @@ class TrackingBox:
                 if y > self.lower_y:
                     self.lower_y = y
                 break
+
         return masks_in_frame, boxes_in_frame, imgs_in_frame
+
+    def _write_images(self):
+        dir_name = str(id(self))
+        if not os.path.isdir(dir_name):
+            os.mkdir(dir_name)
+        for idx, img in enumerate(self.imgs):
+            cv2.imwrite(os.path.join(dir_name, f'{idx}.jpg'), img)
 
 
 if __name__ == '__main__':
-    cd = CrossDetector('data/in_out/in_video.mp4', 650)
+    cd = CrossDetector('data/in_out/out_video.mp4', 500)
     tbs = []
-    for _ in range(150):
+    for _ in range(200):
         tbs += cd.process_next_frame()
+    for t in tbs:
+        t._write_images()
     pass

@@ -35,7 +35,7 @@ class PersonDetector:
                 masks = outputs['instances'].pred_masks[cid_mask].cpu().numpy()
                 person_masks = [PersonDetector.extract_person_mask(m, b) for m, b in zip(masks, boxes)]  # diff. sizes
                 person_images = PersonDetector.extract_person_images(frame, boxes)
-                return date, frame, (person_masks, boxes, person_images, scores)
+                return date, frame, (person_masks, list(boxes), person_images, scores)
             else:
                 return date, frame, None
         else:
