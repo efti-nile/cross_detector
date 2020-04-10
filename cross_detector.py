@@ -7,12 +7,13 @@ from cached_person_detector import CachedPersonDetector
 
 class CrossDetector:
 
-    def __init__(self, video_path, gate_y_coor, gate_width=100):
+    def __init__(self, video_path, gate_y_coor, gate_width=50, hysteresis=25):
         self.person_detector = CachedPersonDetector(video_path)  # 1k frames requires up to 2Gb of storage
         # self.person_detector = PersonDetector(video_path)  # storage not required
         self.gate_y_coor = gate_y_coor
         self.gate_width = gate_width
         self.track_boxes = []
+        self.hysteresis = hysteresis
 
     def process_next_frame(self):
         """
@@ -28,13 +29,14 @@ class CrossDetector:
             masks, boxes, images, _ = detection_data
             for tb in self.track_boxes:
                 masks, boxes, images = tb.update(masks, boxes, images, date)
-                if tb.lower_y > self.gate_y_coor + self.gate_width:
+                if tb.lower_y > (self.gate_y_coor + self.gate_width // 2 + self.hysteresis) \
+                        or tb.lower_y < (self.gate_y_coor - self.gate_width // 2 - self.hysteresis):
                     out.append(tb)  # return a complete `TrackingBox`
                     self.track_boxes.remove(tb)
             for mask, box, img in zip(masks, boxes, images):
                 _, y1, _, y2 = box
                 lower_y = max(y1, y2)
-                if self.gate_y_coor < lower_y < self.gate_y_coor + self.gate_width:
+                if (self.gate_y_coor - self.gate_width // 2) < lower_y < (self.gate_y_coor + self.gate_width // 2):
                     self.track_boxes.append(TrackingBox(mask, box, img, date))
         return out
 
@@ -129,7 +131,7 @@ class TrackingBox:
 if __name__ == '__main__':
     cd = CrossDetector('data/in_out/out_video.mp4', 500)
     tbs = []
-    for _ in range(200):
+    for _ in range(150):
         tbs += cd.process_next_frame()
     for t in tbs:
         t._write_images()
