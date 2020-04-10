@@ -10,7 +10,7 @@ class VideoReader:
     """Reads video with a datetime for each frame.
 
     If there is {video_name}.datetime text file, the start datetime is read from it.
-    Example of datetime string: '2020-04-01T12:00:00+03:00'
+    Example of datetime string: '2020-04-01T12:00:00 UTC'
 
     Otherwise the start datetime is read by hachoir-metadata utility.
     """
@@ -24,7 +24,7 @@ class VideoReader:
         if os.path.exists(datetime_path):
             with open(datetime_path) as f:
                 datetime_str = f.readline().strip()
-                self.start_datetime = datetime.fromisoformat(datetime_str)
+                self.start_datetime = datetime.strptime(datetime_str, '%Y-%m-%dT%H:%M:%S %Z')
         else:
             self.start_datetime = VideoReader.get_start_datetime_meta(filepath)
 
