@@ -3,13 +3,13 @@ import cv2
 import os
 
 from cached_person_detector import CachedPersonDetector
+from person_detector import PersonDetector, get_default_predictor
 
 
 class CrossDetector:
 
-    def __init__(self, video_path, gate_y_coor, gate_width=50, hysteresis=25):
-        self.person_detector = CachedPersonDetector(video_path)  # 1k frames requires up to 2Gb of storage
-        # self.person_detector = PersonDetector(video_path)  # storage not required
+    def __init__(self, person_detector, gate_y_coor, gate_width=50, hysteresis=25):
+        self.person_detector = person_detector
         self.gate_y_coor = gate_y_coor
         self.gate_width = gate_width
         self.track_boxes = []
@@ -129,7 +129,8 @@ class TrackingBox:
 
 
 if __name__ == '__main__':
-    cd = CrossDetector('data/in_out/out_video.mp4', 500)
+    pred = get_default_predictor()
+    cd = CrossDetector(CachedPersonDetector('data/in_out/out_video.mp4', pred), 500)
     tbs = []
     for _ in range(150):
         tbs += cd.process_next_frame()

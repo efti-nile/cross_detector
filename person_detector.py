@@ -9,18 +9,22 @@ from video_reader import VideoReader
 from detectron2 import model_zoo
 
 
+def get_default_predictor():
+    cfg = get_cfg()
+    cfg.merge_from_file(model_zoo.get_config_file("COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_3x.yaml"))
+    cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.8  # set threshold for this model
+    cfg.SOLVER.IMS_PER_BATCH = 1  # to reduce memory usage
+    cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url("COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_3x.yaml")
+    return DefaultPredictor(cfg)
+
+
 class PersonDetector:
 
     PERSON_CID = 0
 
-    def __init__(self, video_path):
+    def __init__(self, video_path, predictor):
         self.video = VideoReader(video_path)
-        cfg = get_cfg()
-        cfg.merge_from_file(model_zoo.get_config_file("COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_3x.yaml"))
-        cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.8  # set threshold for this model
-        cfg.SOLVER.IMS_PER_BATCH = 1  # to reduce memory usage
-        cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url("COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_3x.yaml")
-        self.predictor = DefaultPredictor(cfg)
+        self.predictor = predictor
 
     def process_next_frame(self):
         retval = self.video.get_datetime_frame()
@@ -64,7 +68,7 @@ class PersonDetector:
         
 
 if __name__ == '__main__':
-    pd = PersonDetector('data/in_out/in_video.mp4')
+    pd = PersonDetector('data/in_out/in_video.mp4', get_default_predictor())
     for i in ProgIter(range(1000), verbose=3):
         date, f, detection_data, _ = pd.process_next_frame()
         if detection_data is not None:

@@ -2,15 +2,15 @@ import numpy as np
 import errno
 import os
 
-from person_detector import PersonDetector
+from person_detector import PersonDetector, get_default_predictor
 
 
 class CachedPersonDetector(PersonDetector):
 
     SAVE_PERIOD = 100  # in frames
 
-    def __init__(self, video_path, cache_dir='./'):
-        super().__init__(video_path)
+    def __init__(self, video_path, predictor, cache_dir='./'):
+        super().__init__(video_path, predictor)
         if os.path.isdir(cache_dir):
             self.cache_dir = cache_dir
             self.cache_file_name = os.path.join(self.cache_dir, f'{self.video.video_name}__CACHE__.npz')
@@ -106,7 +106,7 @@ class CachedPersonDetector(PersonDetector):
 if __name__ == '__main__':
     import cv2
     from progiter import ProgIter
-    pd = CachedPersonDetector('data/in_out/in_video.mp4')
+    pd = CachedPersonDetector('data/in_out/in_video.mp4', get_default_predictor())
     for i in ProgIter(range(150), verbose=3):
         date, f, detection_data = pd.process_next_frame()
         if detection_data is not None:
