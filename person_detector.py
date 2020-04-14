@@ -34,12 +34,14 @@ class PersonDetector:
             cid_mask = outputs['instances'].pred_classes == self.PERSON_CID
             cid_num = cid_mask.sum().item()  # total number of detections
             if cid_num:
+                # copying required to detach numpy array from underlying Tensor's storage
                 boxes = outputs['instances'].pred_boxes[cid_mask].tensor.cpu().numpy()
-                scores = outputs['instances'].scores[cid_mask].cpu().numpy().reshape(cid_num, 1)
+                scores = np.copy(outputs['instances'].scores[cid_mask].cpu().numpy().reshape(cid_num, 1))
                 masks = outputs['instances'].pred_masks[cid_mask].cpu().numpy()
-                person_masks = [PersonDetector.extract_person_mask(m, b) for m, b in zip(masks, boxes)]  # diff. sizes
-                person_images = PersonDetector.extract_person_images(frame, boxes)
-                return date, frame, (person_masks, list(boxes), person_images, scores)
+                person_masks = [np.copy(PersonDetector.extract_person_mask(m, b)) for m, b in zip(masks, boxes)]  # diff. sizes
+                person_images = [np.copy(ndarr) for ndarr in PersonDetector.extract_person_images(frame, boxes)]
+                boxes = [np.copy(ndarr) for ndarr in boxes]
+                return date, frame, (person_masks, boxes, person_images, scores)
             else:
                 return date, frame, None
         else:
