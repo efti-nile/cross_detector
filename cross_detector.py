@@ -33,6 +33,7 @@ class CrossDetector:
                         or tb.lower_y < (self.gate_y_coor - self.gate_width // 2 - self.hysteresis):
                     out.append(tb)  # return a complete `TrackingBox`
                     self.track_boxes.remove(tb)
+            self.track_boxes = [tb for tb in self.track_boxes if tb.ttl > 0]
             for mask, box, img in zip(masks, boxes, images):
                 _, y1, _, y2 = box
                 lower_y = max(y1, y2)
@@ -41,9 +42,14 @@ class CrossDetector:
         return out
 
 
+def print_mask(mask):
+    print('\n'.join([''.join([str(int(el)) for el in row]) for row in mask]))
+
+
 class TrackingBox:
 
-    IOU_THRESH = 0.5
+    IOU_THRESH = 0.3
+    TTL = 3
 
     def __init__(self, init_mask, init_box, init_img, init_date):
         assert isinstance(init_box, np.ndarray) and init_box.ndim == 1 and init_box.size == 4
@@ -52,6 +58,7 @@ class TrackingBox:
         self.imgs = [init_img]
         self.dates = [init_date]
         self.track_len = 1
+        self.ttl = self.TTL
         self.lower_y = max(init_box[1], init_box[3])  # the lower point has maximum y coordinate
 
     def IoU_with_mask(self, mask, box):
@@ -77,7 +84,8 @@ class TrackingBox:
             mask_with_padding[cbox[1]:(cbox[1] + mask.shape[0]), cbox[0]:(cbox[0] + mask.shape[1])] = mask
 
             # IoU
-            return (smask_with_padding & mask_with_padding).sum() / (smask_with_padding | mask_with_padding).sum()
+            iou = (smask_with_padding & mask_with_padding).sum() / (smask_with_padding | mask_with_padding).sum()
+            return iou
         else:
             return 0
 
@@ -103,20 +111,25 @@ class TrackingBox:
         assert isinstance(masks_in_frame, list) and isinstance(boxes_in_frame, list) \
             and isinstance(imgs_in_frame, list)
 
-        for i in range(len(masks_in_frame)):
-            if self.IoU_with_mask(masks_in_frame[i], boxes_in_frame[i]) > self.IOU_THRESH:
-                # Append a new detection to the track
-                self.masks.append(masks_in_frame.pop(i))
-                self.boxes.append(boxes_in_frame.pop(i))
-                self.imgs.append(imgs_in_frame.pop(i))
-                self.dates.append(date)
-                self.track_len += 1
+        ious = np.array([self.IoU_with_mask(m, b) for m, b in zip(masks_in_frame, boxes_in_frame)])
+        max_iou_idx = np.argmax(ious)
+        max_iou = ious[max_iou_idx]
+        self.ttl -= 1
 
-                # Update lower track border `lower_y`
-                y = max(self.boxes[-1][1], self.boxes[-1][3])
-                if y > self.lower_y:
-                    self.lower_y = y
-                break
+        if max_iou > self.IOU_THRESH:
+            # Append a new detection to the track
+            self.masks.append(masks_in_frame.pop(max_iou_idx))
+            self.boxes.append(boxes_in_frame.pop(max_iou_idx))
+            self.imgs.append(imgs_in_frame.pop(max_iou_idx))
+            self.dates.append(date)
+            self.track_len += 1
+
+            # Update lower track border `lower_y`
+            y = max(self.boxes[-1][1], self.boxes[-1][3])
+            if y > self.lower_y:
+                self.lower_y = y
+
+            self.ttl = self.TTL # reset ttl
 
         return masks_in_frame, boxes_in_frame, imgs_in_frame
 
