@@ -15,12 +15,17 @@ class VideoReader:
     Otherwise the start datetime is read by hachoir-metadata utility.
     """
 
-    def __init__(self, filepath):
+    def __init__(self, filepath, decimation=None):
         self.cap = cv2.VideoCapture(filepath)
         dirpath, filename = os.path.split(filepath)
         self.video_name = filename.split('.')[0]
         self.frame_num = -1
         datetime_path = os.path.join(dirpath, f'{self.video_name}.datetime')
+        if decimation is not None:
+            assert isinstance(decimation, int) and decimation >= 1
+            self.frames_to_grab = decimation - 1
+        else:
+            self.frames_to_grab = 0
         if os.path.exists(datetime_path):
             with open(datetime_path) as f:
                 datetime_str = f.readline().strip()
@@ -46,6 +51,8 @@ class VideoReader:
         return start_datetime
 
     def get_datetime_frame(self):
+        for _ in range(self.frames_to_grab):
+            self.cap.grab()
         frame_returned, frame = self.cap.read()
         time_ms = self.cap.get(cv2.CAP_PROP_POS_MSEC)
         dt = self.start_datetime + timedelta(milliseconds=time_ms)
