@@ -22,8 +22,8 @@ class PersonDetector:
 
     PERSON_CID = 0
 
-    def __init__(self, video_path, predictor):
-        self.video = VideoReader(video_path)
+    def __init__(self, video_path, predictor, decimation=None):
+        self.video = VideoReader(video_path, decimation)
         self.predictor = predictor
 
     def process_next_frame(self):

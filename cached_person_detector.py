@@ -9,8 +9,8 @@ class CachedPersonDetector(PersonDetector):
 
     SAVE_PERIOD = 100  # in frames
 
-    def __init__(self, video_path, predictor, cache_dir='./'):
-        super().__init__(video_path, predictor)
+    def __init__(self, video_path, predictor, cache_dir='./', decimation=None):
+        super().__init__(video_path, predictor, decimation)
         if os.path.isdir(cache_dir):
             self.cache_dir = cache_dir
             self.cache_file_name = os.path.join(self.cache_dir, f'{self.video.video_name}__CACHE__.npz')
