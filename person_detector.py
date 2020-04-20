@@ -22,11 +22,9 @@ class PersonDetector:
 
     PERSON_CID = 0
 
-    def __init__(self, video_path, predictor_creator, decimation=None):
-        assert callable(predictor_creator)
+    def __init__(self, video_path, predictor, decimation=None):
         self.video = VideoReader(video_path, decimation)
-        self.predictor_creator = predictor_creator
-        self.predictor = None
+        self.predictor = predictor
 
     def process_next_frame(self):
         retval = self.video.get_datetime_frame()
