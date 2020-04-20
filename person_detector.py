@@ -32,8 +32,6 @@ class PersonDetector:
         retval = self.video.get_datetime_frame()
         if retval is not None:
             date, frame = retval
-            if self.predictor is None:
-                self.predictor = self.predictor_creator()
             outputs = self.predictor(frame)
             cid_mask = outputs['instances'].pred_classes == self.PERSON_CID
             cid_num = cid_mask.sum().item()  # total number of detections
