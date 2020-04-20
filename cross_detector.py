@@ -14,6 +14,7 @@ class CrossDetector:
         self.gate_width = gate_width
         self.track_boxes = []
         self.hysteresis = hysteresis
+        self.eof = False
 
     def process_next_frame(self):
         """
@@ -24,22 +25,33 @@ class CrossDetector:
             EOFError: the end of video
         """
         out = []
-        date, frame, detection_data = self.person_detector.process_next_frame()
-        if detection_data is not None:
-            masks, boxes, images, _ = detection_data
-            for tb in self.track_boxes:
-                masks, boxes, images = tb.update(masks, boxes, images, date)
-                if tb.lower_y > (self.gate_y_coor + self.gate_width // 2 + self.hysteresis) \
-                        or tb.lower_y < (self.gate_y_coor - self.gate_width // 2 - self.hysteresis):
-                    out.append(tb)  # return a complete `TrackingBox`
-                    self.track_boxes.remove(tb)
-            self.track_boxes = [tb for tb in self.track_boxes if tb.ttl > 0]
-            for mask, box, img in zip(masks, boxes, images):
-                _, y1, _, y2 = box
-                lower_y = max(y1, y2)
-                if (self.gate_y_coor - self.gate_width // 2) < lower_y < (self.gate_y_coor + self.gate_width // 2):
-                    self.track_boxes.append(TrackingBox(mask, box, img, date))
+        retval = self.person_detector.process_next_frame()
+
+        if retval is not None:
+            date, frame, detection_data = retval
+
+            if detection_data is not None:
+                masks, boxes, images, _ = detection_data
+
+                for tb in self.track_boxes:
+                    masks, boxes, images = tb.update(masks, boxes, images, date)
+                    if tb.lower_y > (self.gate_y_coor + self.gate_width // 2 + self.hysteresis) \
+                            or tb.lower_y < (self.gate_y_coor - self.gate_width // 2 - self.hysteresis):
+                        out.append(tb)  # return a complete `TrackingBox`
+                        self.track_boxes.remove(tb)
+
+                self.track_boxes = [tb for tb in self.track_boxes if tb.ttl > 0]
+
+                for mask, box, img in zip(masks, boxes, images):
+                    _, y1, _, y2 = box
+                    lower_y = max(y1, y2)
+                    if (self.gate_y_coor - self.gate_width // 2) < lower_y < (self.gate_y_coor + self.gate_width // 2):
+                        self.track_boxes.append(TrackingBox(mask, box, img, date))
+
         return out
+
+    def end_of_video(self):
+        return self.person_detector.video.no_more_frames
 
 
 def print_mask(mask):
@@ -142,11 +154,12 @@ class TrackingBox:
 
 
 if __name__ == '__main__':
-    pred = get_default_predictor()
-    cd = CrossDetector(CachedPersonDetector('data/in_out/out_video.mp4', pred), 500)
+    cd = CrossDetector(CachedPersonDetector('data/test_video.mp4', get_default_predictor(), cache_dir='data'), 800)
     tbs = []
-    for _ in range(150):
+    while True:
         tbs += cd.process_next_frame()
+        if cd.end_of_video():
+            break
+
     for t in tbs:
         t._write_images()
-    pass

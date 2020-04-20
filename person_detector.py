@@ -43,9 +43,9 @@ class PersonDetector:
                 boxes = [np.copy(ndarr) for ndarr in boxes]
                 return date, frame, (person_masks, boxes, person_images, scores)
             else:
-                return date, frame, None
+                return date, frame, None  # No detections
         else:
-            raise EOFError
+            return None  # No more frames
         
     @staticmethod
     def int_lims_from_box(box, frame_shape):
@@ -70,17 +70,22 @@ class PersonDetector:
         
 
 if __name__ == '__main__':
-    pd = PersonDetector('data/in_out/in_video.mp4', get_default_predictor())
-    for i in ProgIter(range(1000), verbose=3):
-        date, f, detection_data, _ = pd.process_next_frame()
-        if detection_data is not None:
-            m, boxes, images = detection_data
-            for b in boxes:
-                x1, y1, x2, y2 = b.astype("int")
-                x1, x2 = np.clip([x1, x2], 0, f.shape[1])
-                y1, y2 = np.clip([y1, y2], 0, f.shape[0])
-                cv2.rectangle(f, (x1, y1), (x2, y2), (255, 255, 0))
-        cv2.imshow('W', f)
-        key = cv2.waitKey(30) & 0xFF
-        if key == 27:
+    import cv2
+    pd = PersonDetector('data/test_video.mp4', get_default_predictor(), cache_dir='data')
+    while True:
+        retval = pd.process_next_frame()
+        if retval is not None:
+            date, f, detection_data = retval
+            if detection_data is not None:
+                m, boxes, images, scores = detection_data
+                for b in boxes:
+                    x1, y1, x2, y2 = b.astype("int")
+                    x1, x2 = np.clip([x1, x2], 0, f.shape[1])
+                    y1, y2 = np.clip([y1, y2], 0, f.shape[0])
+                    cv2.rectangle(f, (x1, y1), (x2, y2), (255, 255, 0))
+            cv2.imshow('W', f)
+            key = cv2.waitKey(30) & 0xFF
+            if key == 27:
+                break
+        else:
             break

@@ -20,6 +20,7 @@ class VideoReader:
         dirpath, filename = os.path.split(filepath)
         self.video_name = filename.split('.')[0]
         self.frame_num = -1
+        self.no_more_frames = False
         datetime_path = os.path.join(dirpath, f'{self.video_name}.datetime')
         if decimation is not None:
             assert isinstance(decimation, int) and decimation >= 1
@@ -60,6 +61,7 @@ class VideoReader:
             self.frame_num += 1
             return dt, frame
         else:
+            self.no_more_frames = True
             return None
 
     def __del__(self):
