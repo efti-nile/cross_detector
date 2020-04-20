@@ -22,14 +22,18 @@ class PersonDetector:
 
     PERSON_CID = 0
 
-    def __init__(self, video_path, predictor, decimation=None):
+    def __init__(self, video_path, predictor_creator, decimation=None):
+        assert callable(predictor_creator)
         self.video = VideoReader(video_path, decimation)
-        self.predictor = predictor
+        self.predictor_creator = predictor_creator
+        self.predictor = None
 
     def process_next_frame(self):
         retval = self.video.get_datetime_frame()
         if retval is not None:
             date, frame = retval
+            if self.predictor is None:
+                self.predictor = self.predictor_creator()
             outputs = self.predictor(frame)
             cid_mask = outputs['instances'].pred_classes == self.PERSON_CID
             cid_num = cid_mask.sum().item()  # total number of detections
