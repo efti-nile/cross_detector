@@ -71,6 +71,7 @@ class TrackingBox:
         self.dates = [init_date]
         self.track_len = 1
         self.ttl = self.TTL
+        self.reid_id = None
         self.lower_y = max(init_box[1], init_box[3])  # the lower point has maximum y coordinate
 
     def IoU_with_mask(self, mask, box):
