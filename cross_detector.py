@@ -62,6 +62,7 @@ class TrackingBox:
 
     IOU_THRESH = 0.3
     TTL = 3
+    DATA_LISTS = ('masks', 'boxes', 'imgs', 'dates')
 
     def __init__(self, init_mask, init_box, init_img, init_date):
         assert isinstance(init_box, np.ndarray) and init_box.ndim == 1 and init_box.size == 4
