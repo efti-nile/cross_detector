@@ -69,7 +69,7 @@ class CachedPersonDetector(PersonDetector):
 
             retval = self.video.get_datetime_frame()
 
-            if retval is not None:
+            if retval is not None or self.no_more_detections_till_end:
                 date, frame = retval
 
                 # Get boxes, masks, and shapes
@@ -119,7 +119,7 @@ class CachedPersonDetector(PersonDetector):
     def _load_next_part(self):
         self.part_idx += 1
         part_path = self.get_part_path()
-        if os.path.isfile(part_path):
+        if os.path.isfile(part_path):  # cache exists
             # load next part
             cache = np.load(part_path)
             self.detections_cache = cache['detections']
