@@ -69,7 +69,7 @@ class CachedPersonDetector(PersonDetector):
 
             retval = self.video.get_datetime_frame()
 
-            if retval is not None or self.no_more_detections_till_end:
+            if retval is not None:
                 date, frame = retval
 
                 # Get boxes, masks, and shapes
