@@ -74,15 +74,13 @@ class CrossDetector:
 
     def apply_x_limits(self, detection_data):
         """Removes detections out of x limits"""
-        retval = []
         x_min = min(self.gate_pt1[0], self.gate_pt2[0])
         x_max = max(self.gate_pt1[0], self.gate_pt2[0])
-        for detection in detection_data:
-            _, box, _, _ = detection
-            x1, _, x2, _ = box
-            if x_min <= min(x1, x2) and max(x1, x2) <= x_max:
-                retval.append(detection)
-        return retval
+
+        masks, boxes, images, scores = detection_data
+        in_limits = [x_min <= min(x1, x2) and max(x1, x2) <= x_max for x1, _, x2, _ in boxes]
+        return tuple(list(filter(lambda x: x[1], zip(data_list, in_limits)))
+                     for data_list in (masks, boxes, images, scores))
 
     def distance_to_point(self, pt):
         # distance formula https://mathworld.wolfram.com/Point-LineDistance2-Dimensional.html
@@ -191,7 +189,10 @@ class TrackingBox:
 
 
 if __name__ == '__main__':
-    cd = CrossDetector(CachedPersonDetector('data/test_video.mp4', get_default_predictor(), cache_dir='data'), 800)
+    cd = CrossDetector(
+        CachedPersonDetector('data/test_video_52.mp4', get_default_predictor(), cache_dir='data'),
+        gate_pt1=(740, 660),  gate_pt2=(1920, 355)
+    )
     tbs = []
     while True:
         tbs += cd.process_next_frame()
