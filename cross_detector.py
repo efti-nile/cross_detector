@@ -1,16 +1,38 @@
+import os
+import math
+
 import numpy as np
 import cv2
-import os
 
 from cached_person_detector import CachedPersonDetector
 from person_detector import PersonDetector, get_default_predictor
 
+# TODO: I think it's better to track upper point of bbox
+# NOTE: What if multiple gates on a video?
+# NOTE: Porojecting an anchor onto the gate line to enable vertical gates
+
+
+def get_anchor(box):
+    """Box's in (X1,Y1,X2,Y2) form"""
+    anchor_x = .5 * (box[0] + box[2])  # center
+    anchor_y = min(box[1], box[3])  # upper point
+    return anchor_x, anchor_y
+
 
 class CrossDetector:
 
-    def __init__(self, person_detector, gate_y_coor, gate_width=50, hysteresis=25):
+    def __init__(self, person_detector, gate_pt1, gate_pt2, gate_width=50, hysteresis=25):
+        """
+        Args:
+            person_detector:
+            gate_pt1: left point of the gate
+            gate_pt2: right point of the gate
+            gate_width:
+            hysteresis:
+        """
+        assert len(gate_pt1) == 2 and len(gate_pt2) == 2
+        self.gate_pt1, self.gate_pt2 = gate_pt1, gate_pt2
         self.person_detector = person_detector
-        self.gate_y_coor = gate_y_coor
         self.gate_width = gate_width
         self.track_boxes = []
         self.hysteresis = hysteresis
@@ -31,24 +53,43 @@ class CrossDetector:
             date, frame, detection_data = retval
 
             if detection_data is not None:
-                masks, boxes, images, _ = detection_data
+                masks, boxes, images, _ = self.apply_x_limits(detection_data)
 
                 for tb in self.track_boxes:
                     masks, boxes, images = tb.update(masks, boxes, images, date)
-                    if tb.lower_y > (self.gate_y_coor + self.gate_width // 2 + self.hysteresis) \
-                            or tb.lower_y < (self.gate_y_coor - self.gate_width // 2 - self.hysteresis):
+
+                    d = self.distance_to_point(get_anchor(tb.boxes[-1]))
+                    if d > self.gate_width / 2 + self.hysteresis:
                         out.append(tb)  # return a complete `TrackingBox`
                         self.track_boxes.remove(tb)
 
                 self.track_boxes = [tb for tb in self.track_boxes if tb.ttl > 0]
 
                 for mask, box, img in zip(masks, boxes, images):
-                    _, y1, _, y2 = box
-                    lower_y = max(y1, y2)
-                    if (self.gate_y_coor - self.gate_width // 2) < lower_y < (self.gate_y_coor + self.gate_width // 2):
+                    d = self.distance_to_point(get_anchor(box))
+                    if d < self.gate_width / 2 - self.hysteresis:
                         self.track_boxes.append(TrackingBox(mask, box, img, date))
 
         return out
+
+    def apply_x_limits(self, detection_data):
+        """Removes detections out of x limits"""
+        retval = []
+        x_min = min(self.gate_pt1[0], self.gate_pt2[0])
+        x_max = max(self.gate_pt1[0], self.gate_pt2[0])
+        for detection in detection_data:
+            _, box, _, _ = detection
+            x1, _, x2, _ = box
+            if x_min <= min(x1, x2) and max(x1, x2) <= x_max:
+                retval.append(detection)
+        return retval
+
+    def distance_to_point(self, pt):
+        # distance formula https://mathworld.wolfram.com/Point-LineDistance2-Dimensional.html
+        x0, y0 = pt
+        x1, y1 = self.gate_pt1
+        x2, y2 = self.gate_pt2
+        return abs((x2-x1)*(y1-y0) - (x1-x0)*(y2-y1)) / math.sqrt((x2-x1)**2 + (y2-y1)**2)
 
     def end_of_video(self):
         return self.person_detector.video.no_more_frames
@@ -73,7 +114,6 @@ class TrackingBox:
         self.track_len = 1
         self.ttl = self.TTL
         self.reid_id = None
-        self.lower_y = max(init_box[1], init_box[3])  # the lower point has maximum y coordinate
 
     def IoU_with_mask(self, mask, box):
         assert isinstance(box, np.ndarray) and box.ndim == 1 and box.size == 4
@@ -138,12 +178,7 @@ class TrackingBox:
             self.dates.append(date)
             self.track_len += 1
 
-            # Update lower track border `lower_y`
-            y = max(self.boxes[-1][1], self.boxes[-1][3])
-            if y > self.lower_y:
-                self.lower_y = y
-
-            self.ttl = self.TTL # reset ttl
+            self.ttl = self.TTL  # reset ttl
 
         return masks_in_frame, boxes_in_frame, imgs_in_frame
 
