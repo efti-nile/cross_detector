@@ -1,5 +1,6 @@
 import os
 import math
+import itertools
 
 import numpy as np
 import cv2
@@ -55,13 +56,14 @@ class CrossDetector:
             if detection_data is not None:
                 masks, boxes, images, _ = self.apply_x_limits(detection_data)
 
-                for tb in self.track_boxes:
-                    masks, boxes, images = tb.update(masks, boxes, images, date)
+                if masks and boxes and images:
+                    for tb in self.track_boxes:
+                        masks, boxes, images = tb.update(masks, boxes, images, date)
 
-                    d = self.distance_to_point(get_anchor(tb.boxes[-1]))
-                    if d > self.gate_width / 2 + self.hysteresis:
-                        out.append(tb)  # return a complete `TrackingBox`
-                        self.track_boxes.remove(tb)
+                        d = self.distance_to_point(get_anchor(tb.boxes[-1]))
+                        if d > self.gate_width / 2 + self.hysteresis:
+                            out.append(tb)  # return a complete `TrackingBox`
+                            self.track_boxes.remove(tb)
 
                 self.track_boxes = [tb for tb in self.track_boxes if tb.ttl > 0]
 
@@ -79,8 +81,10 @@ class CrossDetector:
 
         masks, boxes, images, scores = detection_data
         in_limits = [x_min <= min(x1, x2) and max(x1, x2) <= x_max for x1, _, x2, _ in boxes]
-        return tuple(list(filter(lambda x: x[1], zip(data_list, in_limits)))
-                     for data_list in (masks, boxes, images, scores))
+        return tuple(
+            list(itertools.compress(data_list, in_limits))
+            for data_list in (masks, boxes, images, scores)
+        )
 
     def distance_to_point(self, pt):
         # distance formula https://mathworld.wolfram.com/Point-LineDistance2-Dimensional.html
