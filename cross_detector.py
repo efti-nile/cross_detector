@@ -167,20 +167,21 @@ class TrackingBox:
         assert isinstance(masks_in_frame, list) and isinstance(boxes_in_frame, list) \
             and isinstance(imgs_in_frame, list)
 
-        ious = np.array([self.IoU_with_mask(m, b) for m, b in zip(masks_in_frame, boxes_in_frame)])
-        max_iou_idx = np.argmax(ious)
-        max_iou = ious[max_iou_idx]
-        self.ttl -= 1
+        if masks_in_frame and boxes_in_frame and imgs_in_frame:
+            ious = np.array([self.IoU_with_mask(m, b) for m, b in zip(masks_in_frame, boxes_in_frame)])
+            max_iou_idx = np.argmax(ious)
+            max_iou = ious[max_iou_idx]
+            self.ttl -= 1
 
-        if max_iou > self.IOU_THRESH:
-            # Append a new detection to the track
-            self.masks.append(masks_in_frame.pop(max_iou_idx))
-            self.boxes.append(boxes_in_frame.pop(max_iou_idx))
-            self.imgs.append(imgs_in_frame.pop(max_iou_idx))
-            self.dates.append(date)
-            self.track_len += 1
+            if max_iou > self.IOU_THRESH:
+                # Append a new detection to the track
+                self.masks.append(masks_in_frame.pop(max_iou_idx))
+                self.boxes.append(boxes_in_frame.pop(max_iou_idx))
+                self.imgs.append(imgs_in_frame.pop(max_iou_idx))
+                self.dates.append(date)
+                self.track_len += 1
 
-            self.ttl = self.TTL  # reset ttl
+                self.ttl = self.TTL  # reset ttl
 
         return masks_in_frame, boxes_in_frame, imgs_in_frame
 
