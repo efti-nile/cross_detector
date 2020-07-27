@@ -175,9 +175,9 @@ class TrackingBox:
 
             if max_iou > self.IOU_THRESH:
                 # Append a new detection to the track
-                self.masks.append(masks_in_frame.pop(max_iou_idx))
-                self.boxes.append(boxes_in_frame.pop(max_iou_idx))
-                self.imgs.append(imgs_in_frame.pop(max_iou_idx))
+                self.masks.append(masks_in_frame.pop(max_iou_idx).copy())
+                self.boxes.append(boxes_in_frame.pop(max_iou_idx).copy())
+                self.imgs.append(imgs_in_frame.pop(max_iou_idx).copy())
                 self.dates.append(date)
                 self.track_len += 1
 
